@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>News Automation</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+                sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            padding: 20px;
+        }
+        
+        .input-container {
+            position: relative;
+            width: 100%;
+        }
+        
+        .text-input {
+            width: 100%;
+            padding: 20px 24px;
+            font-size: 18px;
+            border: none;
+            border-radius: 50px;
+            background: white;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            outline: none;
+            transition: all 0.3s ease;
+            box-sizing: border-box;
+        }
+        
+        .text-input:focus {
+            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
+            transform: translateY(-2px);
+        }
+        
+        .text-input::placeholder {
+            color: #a0a0a0;
+        }
+        
+        .message {
+            margin-top: 20px;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            color: #333;
+            font-size: 16px;
+            line-height: 1.5;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #667eea;
+            animation: spin 1s ease-in-out infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        function App() {
+            const [email, setEmail] = useState('');
+            const [message, setMessage] = useState('');
+            const [inputValue, setInputValue] = useState('');
+            const [placeholder, setPlaceholder] = useState('Enter your email to get started...');
+            const [responseMessage, setResponseMessage] = useState('');
+            const [isLoading, setIsLoading] = useState(false);
+            
+            const API_URL = process.env.NODE_ENV === 'production' 
+                ? '/api' 
+                : 'http://localhost:8000/api';
+            
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                if (!inputValue.trim()) return;
+                
+                setIsLoading(true);
+                
+                try {
+                    // First input is always email
+                    if (!email) {
+                        setEmail(inputValue);
+                        setMessage('');
+                        setPlaceholder('What would you like to do?');
+                    } else {
+                        setMessage(inputValue);
+                    }
+                    
+                    const response = await fetch(`${API_URL}/process`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            email: email || inputValue,
+                            message: email ? inputValue : 'new user'
+                        }),
+                    });
+                    
+                    const data = await response.json();
+                    setResponseMessage(data.response);
+                    
+                    // Update placeholder based on response
+                    if (data.response.includes('Welcome!')) {
+                        setPlaceholder('Type your command (e.g., "add medium" or "change time to 9:00 AM")');
+                    } else if (data.response.includes('Anything else?')) {
+                        setPlaceholder('Anything else? (or type "done")');
+                    } else if (data.response.includes('unsubscribed')) {
+                        // Reset everything
+                        setEmail('');
+                        setPlaceholder('Enter your email to get started...');
+                    }
+                } catch (error) {
+                    setResponseMessage('Error: Unable to process your request. Please try again.');
+                } finally {
+                    setIsLoading(false);
+                    setInputValue('');
+                }
+            };
+            
+            return (
+                <div className="container">
+                    <form onSubmit={handleSubmit}>
+                        <div className="input-container">
+                            <input
+                                type="text"
+                                className="text-input"
+                                value={inputValue}
+                                onChange={(e) => setInputValue(e.target.value)}
+                                placeholder={placeholder}
+                                disabled={isLoading}
+                                autoFocus
+                            />
+                        </div>
+                    </form>
+                    
+                    {isLoading && (
+                        <div className="message">
+                            <div className="loading"></div>
+                        </div>
+                    )}
+                    
+                    {!isLoading && responseMessage && (
+                        <div className="message">
+                            {responseMessage}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+        
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html> 
