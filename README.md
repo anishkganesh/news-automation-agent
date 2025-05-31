@@ -16,7 +16,7 @@ An AI-powered news digest service that automatically crawls Medium, Google News,
 ### 1. Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/news-automation-agent.git
+git clone https://github.com/anishkganesh/news-automation-agent.git
 cd news-automation-agent
 pip install -r requirements.txt
 ```
@@ -31,6 +31,11 @@ FIRECRAWL_API_KEY=your_firecrawl_api_key
 RESEND_API_KEY=your_resend_api_key  # Optional for email sending
 ```
 
+**Get your API keys:**
+- OpenAI: https://platform.openai.com/api-keys
+- Firecrawl: https://firecrawl.dev
+- Resend: https://resend.com (free tier available)
+
 ### 3. Local Development
 
 ```bash
@@ -41,9 +46,17 @@ Open `index.html` in your browser or serve it locally.
 
 ### 4. Deploy to Vercel
 
-```bash
-vercel
-```
+1. Install Vercel CLI: `npm i -g vercel`
+2. Set up environment variables in Vercel:
+   ```bash
+   vercel env add OPENAI_API_KEY
+   vercel env add FIRECRAWL_API_KEY
+   vercel env add RESEND_API_KEY
+   ```
+3. Deploy:
+   ```bash
+   vercel
+   ```
 
 ## Usage
 
@@ -79,6 +92,13 @@ vercel
 - `GET /api/test-digest/{email}`: Send test digest immediately
 - `GET /api/cron/send-digests`: Cron endpoint for scheduled sends
 
+## Email Setup with Resend
+
+1. Sign up at [resend.com](https://resend.com)
+2. Verify your domain or use their test domain
+3. Get your API key from the dashboard
+4. Add it to your environment variables
+
 ## Customization
 
 ### Adding New Sources
@@ -101,6 +121,12 @@ Update the `create_digest()` function in `api/app.py` to customize the email for
 - `OPENAI_API_KEY`: Required for AI parsing and content formatting
 - `FIRECRAWL_API_KEY`: Required for web scraping
 - `RESEND_API_KEY`: Required for sending emails (get free at resend.com)
+
+## Notes
+
+- The cron job runs every hour and checks which users need their digest sent
+- User data is stored in `users.json` (gitignored for privacy)
+- For production, consider using a proper database instead of JSON file
 
 ## License
 
