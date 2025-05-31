@@ -27,6 +27,7 @@ Thumbs.db
 users.json
 *.log
 .vercel
+test_local.py
 
 # Node (if needed later)
 node_modules/
