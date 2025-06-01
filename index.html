@@ -1,83 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News Automation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'inter': ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-        
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #333;
-        }
-        
-        .container {
-            width: 100%;
-            max-width: 500px;
-            padding: 20px;
-        }
-        
-        .input-container {
-            position: relative;
-            width: 100%;
-        }
-        
-        .text-input {
-            width: 100%;
-            padding: 20px 24px;
-            font-size: 16px;
             font-family: 'Inter', sans-serif;
-            font-weight: 400;
+        }
+        
+        /* Custom gradient background */
+        .gradient-bg {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+        }
+        
+        /* Floating input with no background */
+        .floating-input {
+            background: transparent;
             border: none;
-            border-radius: 50px;
-            background: white;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-            outline: none;
+            border-bottom: 2px solid rgba(139, 92, 246, 0.5);
             transition: all 0.3s ease;
         }
         
-        .text-input:focus {
-            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.15);
+        .floating-input:focus {
+            outline: none;
+            border-bottom-color: rgb(139, 92, 246);
             transform: translateY(-2px);
         }
         
-        .text-input::placeholder {
-            color: #999;
-            font-weight: 400;
-        }
-        
-        .message {
-            margin-top: 20px;
-            padding: 16px 24px;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            color: #333;
-            font-size: 15px;
-            line-height: 1.6;
-            animation: fadeIn 0.3s ease;
-            font-weight: 400;
-        }
-        
-        .step-indicator {
-            text-align: center;
-            margin-bottom: 30px;
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 14px;
-            font-weight: 500;
-            letter-spacing: 0.5px;
-        }
-        
+        /* Fade in animation */
         @keyframes fadeIn {
             from {
                 opacity: 0;
@@ -89,13 +54,14 @@
             }
         }
         
-        .loading {
-            display: inline-block;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #667eea;
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 3px solid rgba(139, 92, 246, 0.3);
+            border-top-color: rgb(139, 92, 246);
             animation: spin 1s ease-in-out infinite;
         }
         
@@ -104,7 +70,7 @@
         }
     </style>
 </head>
-<body>
+<body class="gradient-bg min-h-screen flex items-center justify-center text-white">
     <div id="root"></div>
     
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -121,6 +87,7 @@
             const [placeholder, setPlaceholder] = useState('Enter your email to get started...');
             const [responseMessage, setResponseMessage] = useState('');
             const [isLoading, setIsLoading] = useState(false);
+            const [pendingUrl, setPendingUrl] = useState(null);
             
             // Determine API URL based on environment
             const API_URL = window.location.hostname === 'localhost' 
@@ -131,7 +98,7 @@
                 switch(step) {
                     case 1: return 'Step 1 of 3: Email';
                     case 2: return 'Step 2 of 3: Delivery Time';
-                    case 3: return 'Step 3 of 3: Customize';
+                    case 3: return 'Step 3 of 3: Sources (Optional)';
                     default: return '';
                 }
             };
@@ -184,31 +151,66 @@
                         
                         if (!data.response.includes('Invalid') && !data.response.includes('specify')) {
                             setStep(3);
-                            setPlaceholder('What would you like to do? (add source, view sources, etc.)');
+                            setPlaceholder('Add a source (URL or name) or say "done" to finish');
+                        }
+                    } else if (pendingUrl) {
+                        // URL confirmation
+                        const confirmed = inputValue.toLowerCase().includes('yes') || inputValue.toLowerCase().includes('y');
+                        if (confirmed) {
+                            const response = await fetch(`${API_URL}/process`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    email: email,
+                                    message: `confirm add source ${pendingUrl}`
+                                }),
+                            });
+                            
+                            const data = await response.json();
+                            setResponseMessage(data.response);
+                            setPendingUrl(null);
+                            setPlaceholder('Add another source or say "done"');
+                        } else {
+                            setPendingUrl(null);
+                            setResponseMessage('Source not added. Try another URL or website name.');
+                            setPlaceholder('Add a source (URL or name) or say "done"');
                         }
                     } else {
-                        // Regular commands
-                        const response = await fetch(`${API_URL}/process`, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                            },
-                            body: JSON.stringify({
-                                email: email,
-                                message: inputValue
-                            }),
-                        });
-                        
-                        const data = await response.json();
-                        setResponseMessage(data.response);
-                        
-                        if (data.response.includes('unsubscribed')) {
-                            // Reset everything
+                        // Regular commands or done
+                        if (inputValue.toLowerCase().includes('done') || inputValue.toLowerCase().includes('finish')) {
                             setStep(1);
                             setEmail('');
                             setPlaceholder('Enter your email to get started...');
-                        } else if (data.response.includes('Anything else?')) {
-                            setPlaceholder('Anything else? (or type "done")');
+                            setResponseMessage('Setup complete! Your digests will be sent at the scheduled time.');
+                        } else {
+                            const response = await fetch(`${API_URL}/process`, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    email: email,
+                                    message: inputValue
+                                }),
+                            });
+                            
+                            const data = await response.json();
+                            
+                            // Check if response contains a URL confirmation
+                            if (data.confirmUrl) {
+                                setPendingUrl(data.confirmUrl);
+                                setResponseMessage(`Is this the correct URL: ${data.confirmUrl}?`);
+                                setPlaceholder('Yes or No');
+                            } else {
+                                setResponseMessage(data.response);
+                                if (data.response.includes('unsubscribed')) {
+                                    setStep(1);
+                                    setEmail('');
+                                    setPlaceholder('Enter your email to get started...');
+                                }
+                            }
                         }
                     }
                 } catch (error) {
@@ -220,25 +222,29 @@
                 }
             };
             
-            return React.createElement('div', { className: 'container' },
-                step <= 3 && React.createElement('div', { className: 'step-indicator' }, getStepText()),
-                React.createElement('form', { onSubmit: handleSubmit },
-                    React.createElement('div', { className: 'input-container' },
-                        React.createElement('input', {
-                            type: 'text',
-                            className: 'text-input',
-                            value: inputValue,
-                            onChange: (e) => setInputValue(e.target.value),
-                            placeholder: placeholder,
-                            disabled: isLoading,
-                            autoFocus: true
-                        })
+            return React.createElement('div', { className: 'w-full max-w-2xl px-6' },
+                step <= 3 && React.createElement('div', { className: 'text-center mb-8 fade-in' },
+                    React.createElement('h2', { className: 'text-sm font-medium text-violet-300 uppercase tracking-wider' }, 
+                        getStepText()
                     )
                 ),
-                isLoading && React.createElement('div', { className: 'message' },
-                    React.createElement('div', { className: 'loading' })
+                React.createElement('form', { onSubmit: handleSubmit, className: 'relative' },
+                    React.createElement('input', {
+                        type: 'text',
+                        className: 'floating-input w-full py-4 px-2 text-2xl text-white placeholder-gray-400 text-center',
+                        value: inputValue,
+                        onChange: (e) => setInputValue(e.target.value),
+                        placeholder: placeholder,
+                        disabled: isLoading,
+                        autoFocus: true
+                    })
                 ),
-                !isLoading && responseMessage && React.createElement('div', { className: 'message' }, responseMessage)
+                isLoading && React.createElement('div', { className: 'flex justify-center mt-8 fade-in' },
+                    React.createElement('div', { className: 'spinner w-8 h-8 rounded-full' })
+                ),
+                !isLoading && responseMessage && React.createElement('div', { 
+                    className: 'mt-8 text-center text-gray-300 fade-in max-w-lg mx-auto' 
+                }, responseMessage)
             );
         }
         

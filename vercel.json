@@ -23,7 +23,7 @@
   "crons": [
     {
       "path": "/api/cron/send-digests",
-      "schedule": "0 * * * *"
+      "schedule": "* * * * *"
     }
   ]
 } 
