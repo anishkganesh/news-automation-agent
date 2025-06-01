@@ -29,6 +29,7 @@ users.json
 .vercel
 test_local.py
 server.py
+TEST_UI.md
 
 # Node (if needed later)
 node_modules/
