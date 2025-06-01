@@ -4,20 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>News Automation</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
-        body {
+        * {
+            box-sizing: border-box;
             margin: 0;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-                'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-                sans-serif;
+            padding: 0;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
+            color: #333;
         }
         
         .container {
@@ -34,14 +36,15 @@
         .text-input {
             width: 100%;
             padding: 20px 24px;
-            font-size: 18px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            font-weight: 400;
             border: none;
             border-radius: 50px;
             background: white;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
             outline: none;
             transition: all 0.3s ease;
-            box-sizing: border-box;
         }
         
         .text-input:focus {
@@ -50,7 +53,8 @@
         }
         
         .text-input::placeholder {
-            color: #a0a0a0;
+            color: #999;
+            font-weight: 400;
         }
         
         .message {
@@ -59,9 +63,19 @@
             background: rgba(255, 255, 255, 0.95);
             border-radius: 20px;
             color: #333;
-            font-size: 16px;
-            line-height: 1.5;
+            font-size: 15px;
+            line-height: 1.6;
             animation: fadeIn 0.3s ease;
+            font-weight: 400;
+        }
+        
+        .step-indicator {
+            text-align: center;
+            margin-bottom: 30px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
         }
         
         @keyframes fadeIn {
@@ -93,20 +107,34 @@
 <body>
     <div id="root"></div>
     
-    <script type="text/babel">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <script>
         const { useState, useEffect } = React;
+        const { createRoot } = ReactDOM;
         
         function App() {
+            const [step, setStep] = useState(1);
             const [email, setEmail] = useState('');
-            const [message, setMessage] = useState('');
             const [inputValue, setInputValue] = useState('');
             const [placeholder, setPlaceholder] = useState('Enter your email to get started...');
             const [responseMessage, setResponseMessage] = useState('');
             const [isLoading, setIsLoading] = useState(false);
             
-            const API_URL = process.env.NODE_ENV === 'production' 
-                ? '/api' 
-                : 'http://localhost:8000/api';
+            // Determine API URL based on environment
+            const API_URL = window.location.hostname === 'localhost' 
+                ? 'http://localhost:8000/api' 
+                : '/api';
+            
+            const getStepText = () => {
+                switch(step) {
+                    case 1: return 'Step 1 of 3: Email';
+                    case 2: return 'Step 2 of 3: Delivery Time';
+                    case 3: return 'Step 3 of 3: Customize';
+                    default: return '';
+                }
+            };
             
             const handleSubmit = async (e) => {
                 e.preventDefault();
@@ -115,40 +143,76 @@
                 setIsLoading(true);
                 
                 try {
-                    // First input is always email
-                    if (!email) {
-                        setEmail(inputValue);
-                        setMessage('');
-                        setPlaceholder('What would you like to do?');
+                    if (step === 1) {
+                        // Email submission
+                        const response = await fetch(`${API_URL}/process`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                email: inputValue,
+                                message: 'new user'
+                            }),
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.response.includes('valid email')) {
+                            setResponseMessage(data.response);
+                        } else {
+                            setEmail(inputValue);
+                            setStep(2);
+                            setPlaceholder('When would you like your digest? (e.g., 5:03 pm pst)');
+                            setResponseMessage('');
+                        }
+                    } else if (step === 2) {
+                        // Time submission
+                        const response = await fetch(`${API_URL}/process`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                email: email,
+                                message: `set time to ${inputValue}`
+                            }),
+                        });
+                        
+                        const data = await response.json();
+                        setResponseMessage(data.response);
+                        
+                        if (!data.response.includes('Invalid') && !data.response.includes('specify')) {
+                            setStep(3);
+                            setPlaceholder('What would you like to do? (add source, view sources, etc.)');
+                        }
                     } else {
-                        setMessage(inputValue);
-                    }
-                    
-                    const response = await fetch(`${API_URL}/process`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            email: email || inputValue,
-                            message: email ? inputValue : 'new user'
-                        }),
-                    });
-                    
-                    const data = await response.json();
-                    setResponseMessage(data.response);
-                    
-                    // Update placeholder based on response
-                    if (data.response.includes('Welcome!')) {
-                        setPlaceholder('Type your command (e.g., "add medium" or "change time to 9:00 AM")');
-                    } else if (data.response.includes('Anything else?')) {
-                        setPlaceholder('Anything else? (or type "done")');
-                    } else if (data.response.includes('unsubscribed')) {
-                        // Reset everything
-                        setEmail('');
-                        setPlaceholder('Enter your email to get started...');
+                        // Regular commands
+                        const response = await fetch(`${API_URL}/process`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                email: email,
+                                message: inputValue
+                            }),
+                        });
+                        
+                        const data = await response.json();
+                        setResponseMessage(data.response);
+                        
+                        if (data.response.includes('unsubscribed')) {
+                            // Reset everything
+                            setStep(1);
+                            setEmail('');
+                            setPlaceholder('Enter your email to get started...');
+                        } else if (data.response.includes('Anything else?')) {
+                            setPlaceholder('Anything else? (or type "done")');
+                        }
                     }
                 } catch (error) {
+                    console.error('Error:', error);
                     setResponseMessage('Error: Unable to process your request. Please try again.');
                 } finally {
                     setIsLoading(false);
@@ -156,38 +220,32 @@
                 }
             };
             
-            return (
-                <div className="container">
-                    <form onSubmit={handleSubmit}>
-                        <div className="input-container">
-                            <input
-                                type="text"
-                                className="text-input"
-                                value={inputValue}
-                                onChange={(e) => setInputValue(e.target.value)}
-                                placeholder={placeholder}
-                                disabled={isLoading}
-                                autoFocus
-                            />
-                        </div>
-                    </form>
-                    
-                    {isLoading && (
-                        <div className="message">
-                            <div className="loading"></div>
-                        </div>
-                    )}
-                    
-                    {!isLoading && responseMessage && (
-                        <div className="message">
-                            {responseMessage}
-                        </div>
-                    )}
-                </div>
+            return React.createElement('div', { className: 'container' },
+                step <= 3 && React.createElement('div', { className: 'step-indicator' }, getStepText()),
+                React.createElement('form', { onSubmit: handleSubmit },
+                    React.createElement('div', { className: 'input-container' },
+                        React.createElement('input', {
+                            type: 'text',
+                            className: 'text-input',
+                            value: inputValue,
+                            onChange: (e) => setInputValue(e.target.value),
+                            placeholder: placeholder,
+                            disabled: isLoading,
+                            autoFocus: true
+                        })
+                    )
+                ),
+                isLoading && React.createElement('div', { className: 'message' },
+                    React.createElement('div', { className: 'loading' })
+                ),
+                !isLoading && responseMessage && React.createElement('div', { className: 'message' }, responseMessage)
             );
         }
         
-        ReactDOM.render(<App />, document.getElementById('root'));
+        // Mount the app
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(React.createElement(App));
     </script>
 </body>
 </html> 

@@ -78,17 +78,23 @@ def parse_user_intent(message: str, email: str) -> Dict:
     - remove_source: User wants to remove a news source (extract source name)  
     - change_time: User wants to change delivery time (extract time in HH:MM format)
     - set_timezone: User wants to set timezone (extract timezone)
+    - set_time_and_timezone: User wants to set both time and timezone (e.g., "5:03 pm pst")
     - unsubscribe: User wants to unsubscribe
     - view_sources: User wants to see their current sources
     - help: User needs help or the intent is unclear
     
     Available sources: medium, google_news_tech, google_news_business, google_news_world, book_summaries
     
+    For time parsing:
+    - Convert 12-hour format to 24-hour format (e.g., "5:03 pm" -> "17:03")
+    - Recognize timezone abbreviations: PST/PDT -> America/Los_Angeles, EST/EDT -> America/New_York, CST/CDT -> America/Chicago, MST/MDT -> America/Denver
+    - If the message contains both time and timezone (e.g., "5:03 pm pst"), set intent as "set_time_and_timezone"
+    
     Return a JSON object with:
     - intent: one of the above intents
     - source: the source name if applicable (standardized to match available sources)
-    - time: the time if applicable (in HH:MM format)
-    - timezone: the timezone if applicable
+    - time: the time if applicable (in HH:MM format, 24-hour)
+    - timezone: the timezone if applicable (full timezone name, not abbreviation)
     """
     
     response = openai.chat.completions.create(
@@ -214,7 +220,7 @@ async def process_message(user_input: UserInput):
             return {"response": "Please enter a valid email address."}
         
         # Create new user
-        users[user_input.email] = UserData(email=user_input.email).dict()
+        users[user_input.email] = UserData(email=user_input.email).model_dump()
         save_users(users)
         return {"response": "Welcome! You're now subscribed to the daily digest at 8:00 AM PST. What would you like to do? (add source/remove source/change time/view sources)"}
     
@@ -228,7 +234,7 @@ async def process_message(user_input: UserInput):
         if source and source in AVAILABLE_SOURCES:
             if source not in user_data.sources:
                 user_data.sources.append(source)
-                users[user_input.email] = user_data.dict()
+                users[user_input.email] = user_data.model_dump()
                 save_users(users)
                 return {"response": f"Added {source} to your sources. Anything else?"}
             return {"response": f"You already have {source} in your sources."}
@@ -238,7 +244,7 @@ async def process_message(user_input: UserInput):
         source = intent_data.get("source")
         if source and source in user_data.sources:
             user_data.sources.remove(source)
-            users[user_input.email] = user_data.dict()
+            users[user_input.email] = user_data.model_dump()
             save_users(users)
             return {"response": f"Removed {source} from your sources. Anything else?"}
         return {"response": f"You don't have {source} in your sources."}
@@ -247,7 +253,7 @@ async def process_message(user_input: UserInput):
         time_str = intent_data.get("time")
         if time_str:
             user_data.send_time = time_str
-            users[user_input.email] = user_data.dict()
+            users[user_input.email] = user_data.model_dump()
             save_users(users)
             return {"response": f"Changed delivery time to {time_str}. Anything else?"}
         return {"response": "Please specify a valid time (e.g., 09:30)."}
@@ -258,11 +264,26 @@ async def process_message(user_input: UserInput):
             try:
                 pytz.timezone(timezone)
                 user_data.timezone = timezone
-                users[user_input.email] = user_data.dict()
+                users[user_input.email] = user_data.model_dump()
                 save_users(users)
                 return {"response": f"Set timezone to {timezone}. Anything else?"}
             except:
                 return {"response": "Invalid timezone. Please use format like 'America/New_York' or 'Europe/London'."}
+    
+    elif intent == "set_time_and_timezone":
+        time_str = intent_data.get("time")
+        timezone = intent_data.get("timezone")
+        if time_str and timezone:
+            try:
+                pytz.timezone(timezone)
+                user_data.send_time = time_str
+                user_data.timezone = timezone
+                users[user_input.email] = user_data.model_dump()
+                save_users(users)
+                return {"response": f"Perfect! I'll send your digest at {time_str} {timezone}."}
+            except:
+                return {"response": "Invalid timezone. Please try again with a valid timezone."}
+        return {"response": "Please specify both time and timezone (e.g., '5:03 pm pst')."}
     
     elif intent == "view_sources":
         sources_list = ", ".join(user_data.sources)

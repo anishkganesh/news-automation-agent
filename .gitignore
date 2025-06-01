@@ -28,6 +28,7 @@ users.json
 *.log
 .vercel
 test_local.py
+server.py
 
 # Node (if needed later)
 node_modules/
