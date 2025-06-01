@@ -25,20 +25,20 @@
         
         /* Custom gradient background */
         .gradient-bg {
-            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+            background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #000000 100%);
         }
         
         /* Floating input with no background */
         .floating-input {
             background: transparent;
             border: none;
-            border-bottom: 2px solid rgba(139, 92, 246, 0.5);
+            border-bottom: 2px solid rgba(156, 163, 175, 0.5);
             transition: all 0.3s ease;
         }
         
         .floating-input:focus {
             outline: none;
-            border-bottom-color: rgb(139, 92, 246);
+            border-bottom-color: rgb(156, 163, 175);
             transform: translateY(-2px);
         }
         
@@ -60,8 +60,8 @@
         
         /* Loading spinner */
         .spinner {
-            border: 3px solid rgba(139, 92, 246, 0.3);
-            border-top-color: rgb(139, 92, 246);
+            border: 3px solid rgba(156, 163, 175, 0.3);
+            border-top-color: rgb(156, 163, 175);
             animation: spin 1s ease-in-out infinite;
         }
         
@@ -224,7 +224,7 @@
             
             return React.createElement('div', { className: 'w-full max-w-2xl px-6' },
                 step <= 3 && React.createElement('div', { className: 'text-center mb-8 fade-in' },
-                    React.createElement('h2', { className: 'text-sm font-medium text-violet-300 uppercase tracking-wider' }, 
+                    React.createElement('h2', { className: 'text-sm font-medium text-gray-400 uppercase tracking-wider' }, 
                         getStepText()
                     )
                 ),
@@ -244,7 +244,28 @@
                 ),
                 !isLoading && responseMessage && React.createElement('div', { 
                     className: 'mt-8 text-center text-gray-300 fade-in max-w-lg mx-auto' 
-                }, responseMessage)
+                }, responseMessage),
+                
+                // Add test button for existing users
+                !isLoading && responseMessage && responseMessage.includes('Setup complete') && React.createElement('div', { 
+                    className: 'mt-4 text-center fade-in' 
+                }, 
+                    React.createElement('button', {
+                        className: 'px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded transition-colors',
+                        onClick: async () => {
+                            setIsLoading(true);
+                            try {
+                                const response = await fetch(`${API_URL}/test-digest/${email}`);
+                                const data = await response.json();
+                                setResponseMessage('Test email sent! Check your inbox.');
+                            } catch (error) {
+                                setResponseMessage('Error sending test email.');
+                            } finally {
+                                setIsLoading(false);
+                            }
+                        }
+                    }, 'Send Test Email Now')
+                )
             );
         }
         

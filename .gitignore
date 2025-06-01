@@ -30,6 +30,7 @@ users.json
 test_local.py
 server.py
 TEST_UI.md
+CHANGES_SUMMARY.md
 
 # Node (if needed later)
 node_modules/
